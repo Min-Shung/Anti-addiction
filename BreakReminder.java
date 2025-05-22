@@ -8,7 +8,7 @@ public class BreakReminder {
         Timer timer = new Timer();
 
         // 每 30 分鐘提醒一次（30 分鐘 = 1800 秒 = 1800000 毫秒）
-        long delay = ˇ * 1000;
+        long delay = 1800 * 1000;
 
         // 第一次延遲時間 = 30 分鐘，之後每 30 分鐘重複
         timer.scheduleAtFixedRate(new TimerTask() {
