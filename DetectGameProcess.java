@@ -19,6 +19,7 @@ public class DetectGameProcess {
         "Cyberpunk2077.exe",             // Cyberpunk 2077
         "Overwatch.exe",                 // Overwatch 2
         "TS4_x64.exe",                   // The Sims 4
-        "Stardew Valley.exe"             // Stardew Valley
+        "Stardew Valley.exe",             // Stardew Valley
+        "steam.exe"                        // Steam 平台啟動器
     };
 }
