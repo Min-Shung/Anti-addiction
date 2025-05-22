@@ -1,6 +1,9 @@
 import java.util.Timer;
 import java.util.TimerTask;
 import java.text.SimpleDateFormat;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.net.*;
 import java.util.Date;
 import java.util.Calendar;
 
@@ -15,6 +18,36 @@ public class Timecounter {
     private final NotificationListener listener; // 通知監聽器
     private final SimpleDateFormat timeFormat;  // 時間格式化物件
     
+    private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
+
+    public static ZonedDateTime getNetworkTaipeiTime() throws Exception {
+        // 從NTP獲取UTC時間 (簡化版，實際應完整實現NTP協議)
+        long ntpTime = getNtpTime();
+        Instant instant = Instant.ofEpochSecond(ntpTime);
+        
+        // 轉換為台北時區
+        return instant.atZone(ZoneId.of("Asia/Taipei"));
+    }
+
+    private static long getNtpTime() throws Exception {
+        // 這裡是簡化實現，實際應完整實現NTP協議
+        DatagramSocket socket = new DatagramSocket();
+        InetAddress address = InetAddress.getByName(NTP_SERVER);
+        byte[] buffer = new byte[48];
+        buffer[0] = 0x1B;
+        
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, 123);
+        socket.send(packet);
+        socket.receive(packet);
+        socket.close();
+        
+        // 解析NTP時間戳
+        return ((buffer[40] & 0xFFL) << 24) | 
+               ((buffer[41] & 0xFFL) << 16) | 
+               ((buffer[42] & 0xFFL) << 8) | 
+               (buffer[43] & 0xFFL);
+    }
+
     // 警告狀態標記
     private boolean tenMinWarningSent = false;   // 10分鐘警告是否已發送
     private boolean threeMinWarningSent = false; // 3分鐘警告是否已發送
