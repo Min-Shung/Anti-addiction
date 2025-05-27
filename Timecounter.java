@@ -131,7 +131,7 @@ public class Timecounter {
         }
         
         // 10分鐘警告檢查
-        if (remainingTime <= TEN_MIN_WARNING && !tenMinWarningSent) {
+        if (remainingTime == TEN_MIN_WARNING && !tenMinWarningSent) {
             tenMinWarningSent = true;
             if (listener != null) {
                 listener.onTenMinuteWarning(currentRealTime);
@@ -139,7 +139,7 @@ public class Timecounter {
         }
         
         // 3分鐘警告檢查
-        if (remainingTime <= THREE_MIN_WARNING && !threeMinWarningSent) {
+        if (remainingTime == THREE_MIN_WARNING && !threeMinWarningSent) {
             threeMinWarningSent = true;
             if (listener != null) {
                 listener.onThreeMinuteWarning(currentRealTime);
@@ -147,7 +147,7 @@ public class Timecounter {
         }
         
         // 時間用完檢查
-        if (remainingTime <= 0) {
+        if (remainingTime == 0) {
             timer.cancel();
             if (listener != null) {
                 listener.onTimeExhausted(currentRealTime);
