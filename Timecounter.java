@@ -12,13 +12,15 @@ public class Timecounter {
     private long startTime;                     // 開始時間(毫秒)
     private int remainingTime;                  // 剩餘時間(秒)
     private final int gameTime;                 // 總允許時間(秒)
-    private static final int TEN_MIN_WARNING = 50;   // 10分鐘警告(600秒)
-    private static final int THREE_MIN_WARNING = 30; // 3分鐘警告(180秒)
+    private static final int TEN_MIN_WARNING = 600;   // 10分鐘警告(600秒)
+    private static final int THREE_MIN_WARNING = 180; // 3分鐘警告(180秒)
     
     private final NotificationListener listener; // 通知監聽器
     private final SimpleDateFormat timeFormat;  // 時間格式化物件
     
     private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
+    private static final int FORBIDDEN_START_HOUR = 23; // 禁止開始時間(23:00)
+    private static final int FORBIDDEN_END_HOUR = 1;    // 禁止結束時間(01:00)
 
     public static ZonedDateTime getNetworkTaipeiTime() throws Exception {
         // 從NTP獲取UTC時間 (簡化版，實際應完整實現NTP協議)
@@ -58,6 +60,7 @@ public class Timecounter {
         void onThreeMinuteWarning(String currentRealTime); // 3分鐘警告回調(帶現實時間)
         void onTimeExhausted(String currentRealTime);     // 時間用完回調(帶現實時間)
         void onTimeUpdate(String formattedTime, String realTime); // 時間更新回調
+        void onForbiddenTime(String currentRealTime); // 新增禁止時段通知
     }
     
     public Timecounter(int totalAllowedMinutes, NotificationListener listener) {
@@ -91,17 +94,36 @@ public class Timecounter {
         }, 0, 1000);
     }
     
+    //檢查當前是否在禁止遊玩時段
+    //return true如果在禁止時段(23:00-01:00)
+    private boolean isForbiddenTime() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+        return hour >= FORBIDDEN_START_HOUR || hour < FORBIDDEN_END_HOUR;
+    }
+
     // 檢查時間並觸發相應事件
     private void checkTime() {
+        // 獲取當前現實時間
+        String currentRealTime = getCurrentRealTime();
+        
+        // 檢查是否在禁止時段
+        if (isForbiddenTime()) {
+            if (timer != null) {
+                timer.cancel();
+                timer = null;
+            }
+            if (listener != null) {
+                listener.onForbiddenTime(currentRealTime);
+            }
+            return;
+        }
         // 計算已過時間(毫秒)並轉為秒
         long elapsedMillis = System.currentTimeMillis() - startTime;
         remainingTime = gameTime - (int)(elapsedMillis / 1000);
         
         // 確保剩餘時間不為負數
         remainingTime = Math.max(remainingTime, 0);
-        
-        // 獲取當前現實時間
-        String currentRealTime = getCurrentRealTime();
         
         // 通知時間更新
         if (listener != null) {
