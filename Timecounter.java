@@ -53,6 +53,7 @@ public class Timecounter {
     // 警告狀態標記
     private boolean tenMinWarningSent = false;   // 10分鐘警告是否已發送
     private boolean threeMinWarningSent = false; // 3分鐘警告是否已發送
+    private boolean timemeout = false; // 時間到
     
     // 通知監聽器介面
     public interface NotificationListener {
@@ -147,7 +148,8 @@ public class Timecounter {
         }
         
         // 時間用完檢查
-        if (remainingTime == 0) {
+        if (remainingTime == 0 && !timemeout) {
+            timemeout = true;
             timer.cancel();
             if (listener != null) {
                 listener.onTimeExhausted(currentRealTime);
