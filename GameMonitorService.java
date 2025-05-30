@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -10,10 +11,15 @@ public class GameMonitorService {
 
     public void startMonitoring() {
         Runnable checkTask = () -> {
-            String runningGame = GameDetection.getRunningGame(DetectGameProcess.gameExecutables);
-            boolean isRunning = (runningGame != null);
+            List<String> runningGames = GameDetection.getRunningGames(DetectGameProcess.gameExecutables);
+            boolean isRunning = !runningGames.isEmpty();
             gameRunning.set(isRunning);
-            System.out.println("【監控】遊戲狀態：" + (isRunning ? "啟動" : "關閉"));
+
+            if (isRunning) {
+                System.out.println("遊戲狀態：啟動，正在執行的遊戲：" + runningGames);
+            } else {
+                System.out.println("遊戲狀態：關閉");
+            }
         };
         scheduler.scheduleAtFixedRate(checkTask, 0, 1, TimeUnit.SECONDS);
     }
@@ -25,5 +31,4 @@ public class GameMonitorService {
     public void stopMonitoring() {
         scheduler.shutdownNow();
     }
-
 }
