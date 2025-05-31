@@ -131,12 +131,12 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     @Override
     public void onTenMinuteWarning(String currentRealTime) {
-        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩10分鐘！ 結束時間:" + currentRealTime);
+        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩10分鐘！ 現在時間:" + currentRealTime);
     }
 
     @Override
     public void onThreeMinuteWarning(String currentRealTime) {
-        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩3分鐘！ 結束時間:" + currentRealTime);
+        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩3分鐘！ 現在時間:" + currentRealTime);
     }
 
     @Override

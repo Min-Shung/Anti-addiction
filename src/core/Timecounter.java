@@ -3,9 +3,17 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.text.SimpleDateFormat;
 import java.time.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.*;
 import java.util.Date;
 import java.util.Calendar;
+import org.json.JSONObject;
+import org.json.JSONException;
+
 
 import config.Config;
 
@@ -16,6 +24,8 @@ public class Timecounter {
     private final int gameTime;                 // 總允許時間(秒)
     private static final int TEN_MIN_WARNING = 600;   // 10分鐘警告(600秒)
     private static final int THREE_MIN_WARNING = 180; // 3分鐘警告(180秒)
+    private static final String STATE_FILE = "remaining_time_state.json";
+
     
     private final NotificationListener listener; // 通知監聽器
     private final SimpleDateFormat timeFormat;  // 時間格式化物件
@@ -71,7 +81,7 @@ public class Timecounter {
     public Timecounter(Config config, NotificationListener listener) {
         this.gameTime = config.getDurationMinutes() * 60; // 分鐘轉秒
         this.listener = listener;
-        this.remainingTime = gameTime;
+        this.remainingTime = loadRemainingTime(config);
         this.restrictTime = config.isRestrictTime();      // 加入是否限制時間
         this.timeFormat = new SimpleDateFormat("HH:mm:ss");
     }
@@ -162,13 +172,40 @@ public class Timecounter {
             }
         }
     }
-    
-    
+    private int loadRemainingTime(Config config) {
+        File file = new File(STATE_FILE);
+        if (file.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String json = reader.readLine();
+                JSONObject obj = new JSONObject(json);
+                return obj.getInt("remainingTime");
+            } catch (IOException | JSONException e) {
+                e.printStackTrace();
+            }
+            }
+            return config.getDurationMinutes() * 60;
+    }
+
+    private void saveRemainingTime() {
+    try (FileWriter writer = new FileWriter(STATE_FILE)) {
+        writer.write("{\"remainingTime\":" + remainingTime + "}");
+    } catch (IOException e) {
+        e.printStackTrace();
+        }
+    }
+    private void deleteRemainingTimeFile() {
+        File file = new File(STATE_FILE);
+        if (file.exists()) {
+            file.delete();
+        }
+    }
+
     // 暫停計時器
     public void pause() {
         if (timer != null) {
             timer.cancel();                     // 取消計時器
             timer = null;
+            saveRemainingTime();
         }
     }
     
@@ -183,7 +220,8 @@ public class Timecounter {
     public void reset() {
         pause();                                // 先暫停計時器
         remainingTime = gameTime;               // 重置剩餘時間
-        resetFlags();                           // 重置警告狀態
+        resetFlags();
+        deleteRemainingTimeFile();                           // 重置警告狀態
     }
     
     // 獲取格式化剩餘時間(HH:MM:SS)
