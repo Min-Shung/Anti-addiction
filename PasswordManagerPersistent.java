@@ -17,7 +17,7 @@ public class PasswordManagerPersistent {
     }
 
     // 載入設定檔內容
-    private static String[] loadConfig() {
+    public static String[] loadConfig() {
         try {
             File file = new File(CONFIG_FILE);
             if (!file.exists()) return null;
@@ -42,6 +42,11 @@ public class PasswordManagerPersistent {
         return null;
     }
 
+    // 提供外部模組讀取用的靜態方法
+    public static String[] loadForOtherModules() {
+        return loadConfig();
+    }
+    
     // 儲存設定檔
     private static void saveConfig(String password, int duration, boolean restrict) {
         try {
@@ -111,3 +116,4 @@ public class PasswordManagerPersistent {
         }
     }
 }
+
