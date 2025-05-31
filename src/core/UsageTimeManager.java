@@ -3,16 +3,18 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 import config.PasswordManagerPersistent;
 import config.Config;
 import detection.DetectGameProcess;
 import detection.GameDetection;
+import detection.KillGame;
+import notifier.NotificationListener;
 
 public class UsageTimeManager implements Timecounter.NotificationListener {
 
-    private final WindowsNotifier notifier;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private final Timecounter timecounter;
@@ -21,9 +23,11 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     private boolean timing = false;
     private boolean timeUp = false;
 
-    public UsageTimeManager(Config config, WindowsNotifier notifier) {
+    private final NotificationListener notificationListener;
+
+    public UsageTimeManager(Config config, NotificationListener notificationListener) {
         this.config = config;
-        this.notifier = notifier;
+        this.notificationListener = notificationListener;
         this.timecounter = new Timecounter(config, this);
     }
 
@@ -37,20 +41,25 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     }
 
     // 主邏輯：判斷遊戲狀態與時間限制
+    private LocalDate lastResetDate = LocalDate.now();
+
     private void checkGameAndEnforceRules() {
+
         List<String> runningGames = GameDetection.getRunningGames(DetectGameProcess.gameExecutables);
         boolean gameRunning = !runningGames.isEmpty();
 
         // 每日午夜重置使用時間
-        if (LocalTime.now().equals(LocalTime.MIDNIGHT)) {
+         LocalDate today = LocalDate.now();
+        if (!today.equals(lastResetDate) && LocalTime.now().isAfter(LocalTime.MIDNIGHT)) {
             resetDailyUsage();
+            lastResetDate = today;
         }
-
+        
         // 判斷是否在禁止時段或時間已用盡
         if (isRestrictedNow()) {
             if (gameRunning) {
                 KillGame.killRunningGames();
-                notifier.showNotification("禁止時間", "目前為禁止時間或遊戲時間已用盡，已關閉遊戲！");
+                notificationListener.notify("ERROR", "禁止遊戲時間", "目前為禁止遊戲時段。" );
             }
             pauseTimingAndSave();
             return;
@@ -110,7 +119,6 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             timeUp = false;
             timecounter.reset();
             timing = false;
-            notifier.showNotification("重置通知", "今日遊戲時間已重置。");
         }
     }
 
@@ -123,17 +131,17 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     @Override
     public void onTenMinuteWarning(String currentRealTime) {
-        notifier.showNotification("剩餘時間提醒", "還剩10分鐘！" + currentRealTime);
+        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩10分鐘！ 結束時間:" + currentRealTime);
     }
 
     @Override
     public void onThreeMinuteWarning(String currentRealTime) {
-        notifier.showNotification("剩餘時間提醒", "還剩3分鐘！" + currentRealTime);
+        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩3分鐘！ 結束時間:" + currentRealTime);
     }
 
     @Override
     public void onTimeExhausted(String currentRealTime) {
-        notifier.showNotification("時間已到", "遊戲時間已用盡，將強制關閉遊戲！" + currentRealTime);
+        notificationListener.notify("ERROR", "時間已到", "遊戲時間已用盡，將強制關閉遊戲！" + currentRealTime);
         timeUp = true;
         timing = false;
         // 可強制關閉遊戲
@@ -148,7 +156,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     @Override
     public void onForbiddenTime(String currentRealTime) {
-        notifier.showNotification("禁止遊戲時間", "目前為禁止遊戲時段，已停止計時。" + currentRealTime);
+        notificationListener.notify("ERROR", "禁止遊戲時間", "目前為禁止遊戲時段，已停止計時。" + currentRealTime);
         timeUp = true;
         timing = false;
         // 強制關閉遊戲

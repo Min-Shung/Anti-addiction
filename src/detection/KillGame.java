@@ -1,4 +1,5 @@
-/*import java.io.IOException;
+package detection;
+import java.io.IOException;
 import java.util.List;
 
 public class KillGame {
@@ -23,4 +24,4 @@ public class KillGame {
         }
     }
     
-}*/
+}

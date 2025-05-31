@@ -1,23 +1,25 @@
-package ui;
-
+package test;
 import config.Config;
+import config.PasswordManagerPersistent;
 import core.UsageTimeManager;
 import notifier.NotificationListener;
 import notifier.WindowsNotificationListener;
-import config.PasswordManagerPersistent;
 
-public class Main {
+public class TestUsageTimeManager {
     public static void main(String[] args) {
-        // 初始化通知模組
-        NotificationListener notifier = new WindowsNotificationListener();
+         NotificationListener notifier = new WindowsNotificationListener();
 
         // 讀取設定
         Config config = PasswordManagerPersistent.run();
-
-        // 建立時間管理器，並將通知介面傳入
         UsageTimeManager usageTimeManager = new UsageTimeManager(config, notifier);
         usageTimeManager.start();
 
-        // 其他程序持續運行
+
+        // 主線程暫停幾分鐘觀察 scheduler 行為
+        try {
+            Thread.sleep(5 * 60 * 1000); // 5 分鐘
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

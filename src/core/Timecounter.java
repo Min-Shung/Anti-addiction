@@ -22,7 +22,7 @@ public class Timecounter {
     
     private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
     private static final int FORBIDDEN_START_HOUR = 23; // 禁止開始時間(23:00)
-    private static final int FORBIDDEN_END_HOUR = 1;    // 禁止結束時間(01:00)
+    private static final int FORBIDDEN_END_HOUR = 7;    // 禁止結束時間(07:00) 問就是我測到早上七點:)
 
     public static ZonedDateTime getNetworkTaipeiTime() throws Exception {
         // 從NTP獲取UTC時間 (簡化版，實際應完整實現NTP協議)
