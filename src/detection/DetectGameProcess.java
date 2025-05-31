@@ -1,4 +1,5 @@
 //遊戲清單
+package detection;
 public class DetectGameProcess {
     public static final String[] gameExecutables = {
         "chrome.exe",                      //google 測試用

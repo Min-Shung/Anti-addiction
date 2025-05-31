@@ -1,13 +1,13 @@
+package config;
 import java.io.*;
 import java.util.Base64;
 import java.util.Scanner;
 
 public class PasswordManagerPersistent {
-    private static final String CONFIG_FILE = "config.txt";       // 設定檔名稱
-    private static final String XOR_KEY = "mysecretkey";          // XOR 加密用的金鑰
-    private static Scanner scanner = new Scanner(System.in);      // 用來接收使用者輸入
+    private static final String CONFIG_FILE = "config.txt";
+    private static final String XOR_KEY = "mysecretkey";
+    private static Scanner scanner = new Scanner(System.in);
 
-    // XOR 加密/解密（對稱加密）
     private static byte[] xorCrypt(byte[] data, byte[] key) {
         byte[] result = new byte[data.length];
         for (int i = 0; i < data.length; i++) {
@@ -16,8 +16,8 @@ public class PasswordManagerPersistent {
         return result;
     }
 
-    // 載入設定檔內容
-    public static String[] loadConfig() {
+    // 讀取設定檔並轉成 Config 物件
+    public static Config loadConfig() {
         try {
             File file = new File(CONFIG_FILE);
             if (!file.exists()) return null;
@@ -34,7 +34,10 @@ public class PasswordManagerPersistent {
 
             String[] parts = decrypted.split("\n");
             if (parts.length >= 3) {
-                return new String[]{ parts[0], parts[1], parts[2] };
+                String password = parts[0];
+                int duration = Integer.parseInt(parts[1]);
+                boolean restrict = Boolean.parseBoolean(parts[2]);
+                return new Config(password, duration, restrict);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -42,15 +45,10 @@ public class PasswordManagerPersistent {
         return null;
     }
 
-    // 提供外部模組讀取用的靜態方法
-    public static String[] loadForOtherModules() {
-        return loadConfig();
-    }
-    
-    // 儲存設定檔
-    private static void saveConfig(String password, int duration, boolean restrict) {
+    // 儲存 Config 物件
+    public static void saveConfig(Config config) {
         try {
-            String plain = password + "\n" + duration + "\n" + restrict;
+            String plain = config.getPassword() + "\n" + config.getDurationMinutes() + "\n" + config.isRestrictTime();
             byte[] plainBytes = plain.getBytes();
             byte[] encryptedBytes = xorCrypt(plainBytes, XOR_KEY.getBytes());
             String base64 = Base64.getEncoder().encodeToString(encryptedBytes);
@@ -64,36 +62,30 @@ public class PasswordManagerPersistent {
         }
     }
 
-    // 主邏輯，可供外部呼叫
-    public static void run() {
-        String[] config = loadConfig();
-        String password;
-        int duration;
-        boolean restrictTime;
+    // 執行設定或登入流程
+    public static Config run() {
+        Config config = loadConfig();
 
         if (config == null) {  // 第一次使用
             System.out.print("請輸入密碼：");
-            password = scanner.nextLine();
+            String password = scanner.nextLine();
 
             System.out.print("請輸入使用時長（分鐘）：");
-            duration = Integer.parseInt(scanner.nextLine());
+            int duration = Integer.parseInt(scanner.nextLine());
 
             System.out.print("是否限制時間？(true/false)：");
-            restrictTime = Boolean.parseBoolean(scanner.nextLine());
+            boolean restrictTime = Boolean.parseBoolean(scanner.nextLine());
 
-            saveConfig(password, duration, restrictTime);
+            config = new Config(password, duration, restrictTime);
+            saveConfig(config);
             System.out.println("設定完成");
 
-        } else {  // 已有設定檔
-            password = config[0];
-            duration = Integer.parseInt(config[1]);
-            restrictTime = Boolean.parseBoolean(config[2]);
-
+        } else {  // 已有設定
             boolean loginSuccess = false;
             while (!loginSuccess) {
                 System.out.print("請輸入密碼登入：");
                 String input = scanner.nextLine();
-                if (input.equals(password)) {
+                if (input.equals(config.getPassword())) {
                     loginSuccess = true;
                     System.out.println("登入成功！");
                 } else {
@@ -105,15 +97,21 @@ public class PasswordManagerPersistent {
             boolean shouldReset = Boolean.parseBoolean(scanner.nextLine());
             if (shouldReset) {
                 System.out.print("請輸入新的使用時長（分鐘）：");
-                duration = Integer.parseInt(scanner.nextLine());
+                int duration = Integer.parseInt(scanner.nextLine());
+                config.setDurationMinutes(duration);
 
                 System.out.print("是否限制時間？(true/false)：");
-                restrictTime = Boolean.parseBoolean(scanner.nextLine());
+                boolean restrictTime = Boolean.parseBoolean(scanner.nextLine());
+                config.setRestrictTime(restrictTime);
 
-                saveConfig(password, duration, restrictTime);
+                saveConfig(config);
                 System.out.println("新設定已儲存！");
             }
         }
-    }
-}
 
+        return config; // 回傳 Config 物件供其他模組使用
+    }
+    public static Config loadForOtherModules() {
+        return loadConfig();
+    }    
+}

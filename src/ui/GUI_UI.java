@@ -1,3 +1,4 @@
+/*package ui;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -6,6 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.Properties;
+
+import config.Config;
+import core.Timecounter;
 
 public class GUI_UI extends JFrame {
     private static final String CONFIG_FILE = "parental_control.cfg";
@@ -268,3 +272,4 @@ public class GUI_UI extends JFrame {
         });
     }
 }
+*/
