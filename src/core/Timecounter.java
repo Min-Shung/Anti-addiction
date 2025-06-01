@@ -28,9 +28,38 @@ public class Timecounter {
     private static final int THREE_MIN_WARNING = 180; // 3分鐘警告閾值(180秒)
     
     // 禁止時段設定 (23:00-07:00)
+    private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
     private static final int FORBIDDEN_START_HOUR = 23; // 禁止時段開始小時(23點)
     private static final int FORBIDDEN_END_HOUR = 7; // 禁止時段結束小時(7點)
     
+    public static ZonedDateTime getNetworkTaipeiTime() throws Exception {
+        // 從NTP獲取UTC時間
+        long ntpTime = getNtpTime();
+        Instant instant = Instant.ofEpochSecond(ntpTime);
+        
+        // 轉換為台北時區
+        return instant.atZone(ZoneId.of("Asia/Taipei"));
+    }
+
+    private static long getNtpTime() throws Exception {
+        DatagramSocket socket = new DatagramSocket();
+        InetAddress address = InetAddress.getByName(NTP_SERVER);
+        byte[] buffer = new byte[48];
+        buffer[0] = 0x1B;
+        
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, 123);
+        socket.send(packet);
+        socket.receive(packet);
+        socket.close();
+        
+        // 解析NTP時間戳
+        return ((buffer[40] & 0xFFL) << 24) | 
+               ((buffer[41] & 0xFFL) << 16) | 
+               ((buffer[42] & 0xFFL) << 8) | 
+               (buffer[43] & 0xFFL);
+    }
+
+
     // 狀態標記
     private boolean tenMinWarningSent = false; // 是否已發送10分鐘警告
     private boolean threeMinWarningSent = false; // 是否已發送3分鐘警告
@@ -40,6 +69,11 @@ public class Timecounter {
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss"); // 時間格式化工具
     private final boolean restrictTime; // 是否啟用時間限制
 
+    // 獲取當前現實時間
+    public String getCurrentRealTime() {
+        return timeFormat.format(new Date());
+    }
+    
     // 通知監聽器介面
     public interface NotificationListener {
         void onTenMinuteWarning(String currentTime); // 10分鐘警告回調
@@ -49,7 +83,6 @@ public class Timecounter {
         void onForbiddenTime(String currentTime); // 禁止時段回調
     }
 
-    // 建構子
     public Timecounter(Config config, NotificationListener listener) {
         this.dailyLimit = config.getDurationMinutes() * 60; // 從設定檔取得每日限制時間(轉換為秒)
         this.listener = listener; // 設定監聽器
