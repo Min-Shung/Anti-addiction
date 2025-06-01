@@ -282,22 +282,12 @@ public class Timecounter {
     }
 
     private void showSavedState() {
-        File file = new File(STATE_FILE);
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line).append(System.lineSeparator());
-                }
-                System.out.println("=== remaining_time_state.json ===");
-                System.out.println(sb.toString());
-            } catch (IOException e) {
-                System.out.println("讀取狀態檔案失敗！");
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("狀態檔案不存在！");
+        try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE))) {
+            String json = reader.readLine();
+            System.out.println("=== remaining_time_state.json 內容 ===");
+            System.out.println(json);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
