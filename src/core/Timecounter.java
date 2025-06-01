@@ -225,6 +225,14 @@ public class Timecounter {
             if (listener != null) {
                 listener.onTimeExhausted(currentTime);
             }
+            // 印出剩餘時間狀態檔案內容
+            try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE))) {
+                String json = reader.readLine();
+                System.out.println("=== remaining_time_state.json 內容 ===");
+                System.out.println(json);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
