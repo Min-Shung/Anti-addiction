@@ -3,6 +3,11 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -106,10 +111,19 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
         return timing;
     }
 
-    // 是否時間用盡或禁止時段
+    // 是否時間用盡或處於禁止時段
     public boolean isRestrictedNow() {
-        return timeUp || timecounter.isForbiddenTime();
+        if (timeUp) return true; // 如果時間已用盡
+        if (!config.isRestrictTime()) return false; // 如果未啟用禁止時段限制
+
+        LocalTime now = LocalTime.now();
+        LocalTime forbiddenStart = LocalTime.of(23, 0);
+        LocalTime forbiddenEnd = LocalTime.of(7, 0);
+
+        // 處理跨午夜的禁止區段 (23:00 ~ 07:00)
+        return now.isAfter(forbiddenStart) || now.isBefore(forbiddenEnd);
     }
+
 
     // 重置每日遊戲使用時間
     private void resetDailyUsage() {
@@ -122,10 +136,23 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
         }
     }
 
-    // 儲存使用時間紀錄（自行實作）
+    // 儲存使用紀錄
     private void saveUsageRecord() {
-        // 例如寫檔、資料庫或更新UI等
+        File file = new File("usage_record.txt"); // 可改為更適當的路徑
+
+        try (FileWriter writer = new FileWriter(file, true)) { // 以附加模式開啟檔案
+            String date = LocalDate.now().toString();
+            int usedSeconds = timecounter.getTotalPlayedTime();
+            int usedMinutes = usedSeconds / 60;
+            int remainingSeconds = config.getDurationMinutes() * 60 - usedSeconds;
+
+            writer.write(String.format("日期：%s，使用時間：%d 分鐘，剩餘時間：%d 秒\n", 
+                            date, usedMinutes, remainingSeconds));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
 
     // ----- Timecounter.NotificationListener 回調實作 -----
 
