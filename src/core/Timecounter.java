@@ -233,6 +233,13 @@ public class Timecounter {
                 listener.onTimeExhausted(currentTime);
 
                 saveState();
+                try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE))) {
+                    String json = reader.readLine();
+                    System.out.println("=== remaining_time_state.json 內容 ===");
+                    System.out.println(json);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
