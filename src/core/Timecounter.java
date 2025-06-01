@@ -225,14 +225,6 @@ public class Timecounter {
             if (listener != null) {
                 listener.onTimeExhausted(currentTime);
             }
-            // 印出剩餘時間狀態檔案內容
-            try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE))) {
-                String json = reader.readLine();
-                System.out.println("=== remaining_time_state.json 內容 ===");
-                System.out.println(json);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
     }
 
@@ -242,6 +234,9 @@ public class Timecounter {
             timer.cancel(); // 取消計時器
             timer = null; // 清空計時器引用
             saveState(); // 儲存狀態
+
+            saveState();
+            showSavedState();
         }
     }
 
@@ -277,6 +272,26 @@ public class Timecounter {
             return String.format("%02d:%02d:%02d", hours, minutes, seconds); // 回傳HH:MM:SS格式
         }
         return String.format("%02d:%02d", minutes, seconds); // 回傳MM:SS格式
+    }
+
+    private void showSavedState() {
+        File file = new File(STATE_FILE);
+        if (file.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append(System.lineSeparator());
+                }
+                System.out.println("=== remaining_time_state.json ===");
+                System.out.println(sb.toString());
+            } catch (IOException e) {
+                System.out.println("讀取狀態檔案失敗！");
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("狀態檔案不存在！");
+        }
     }
 
     // 取得當前時間字串
