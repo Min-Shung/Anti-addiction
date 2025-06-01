@@ -124,13 +124,6 @@ public class Timecounter {
         } catch (IOException e) {
             e.printStackTrace(); // 例外處理
         }
-        try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE))) {
-            String json = reader.readLine();
-            System.out.println("=== remaining_time_state.json 內容 ===");
-            System.out.println(json);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     // 刪除狀態檔案
@@ -169,7 +162,7 @@ public class Timecounter {
             return;
         }
         
-        remainingTime = Math.max(remainingTime - 1, 0); // 直接倒數
+        updateRemainingTime(); // 更新剩餘時間
         saveState(); // 儲存狀態
         
         if (listener != null) { // 如果有監聽器
@@ -231,8 +224,14 @@ public class Timecounter {
             timer.cancel();
             if (listener != null) {
                 listener.onTimeExhausted(currentTime);
-
-                saveState();
+            }
+            // 印出剩餘時間狀態檔案內容
+            try (BufferedReader reader = new BufferedReader(new FileReader(STATE_FILE))) {
+                String json = reader.readLine();
+                System.out.println("=== remaining_time_state.json 內容 ===");
+                System.out.println(json);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -249,14 +248,9 @@ public class Timecounter {
     // 恢復計時
     public void resume() {
         if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
-            resetFlags();
-            timer = new Timer();
-            timer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    checkTime();
-                }
-            }, 0, 1000);
+            // 重新計算開始時間(考慮已過時間)
+            startTime = System.currentTimeMillis() - ((dailyLimit - remainingTime) * 1000L);
+            start(); // 重新開始計時
         }
     }
 
@@ -284,26 +278,6 @@ public class Timecounter {
         }
         return String.format("%02d:%02d", minutes, seconds); // 回傳MM:SS格式
     }
-
-    /*private void showSavedState() {
-        File file = new File(STATE_FILE);
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line).append(System.lineSeparator());
-                }
-                System.out.println("=== remaining_time_state.json ===");
-                System.out.println(sb.toString());
-            } catch (IOException e) {
-                System.out.println("讀取狀態檔案失敗！");
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("狀態檔案不存在！");
-        }
-    }*/
 
     // 取得當前時間字串
     private String getCurrentTime() {
