@@ -14,244 +14,239 @@ import java.util.Calendar;
 import org.json.JSONObject;
 import org.json.JSONException;
 
-
 import config.Config;
 
 public class Timecounter {
-    private Timer timer;                        // 計時器物件
-    private long startTime;                     // 開始時間(毫秒)
-    private int remainingTime;                  // 剩餘時間(秒)
-    private final int gameTime;                 // 總允許時間(秒)
-    private static final int TEN_MIN_WARNING = 600;   // 10分鐘警告(600秒)
-    private static final int THREE_MIN_WARNING = 180; // 3分鐘警告(180秒)
-    private static final String STATE_FILE = "remaining_time_state.json";
-
+    private Timer timer; // 計時器實例
+    private long startTime; // 開始時間(毫秒)
+    private int remainingTime; // 剩餘時間(秒)
+    private final int dailyLimit; // 每日限制時間(秒)
+    private static final String STATE_FILE = "remaining_time_state.json"; // 狀態儲存檔案名稱
+    
+    // 警告時間設定
+    private static final int TEN_MIN_WARNING = 600; // 10分鐘警告閾值(600秒)
+    private static final int THREE_MIN_WARNING = 180; // 3分鐘警告閾值(180秒)
+    
+    // 禁止時段設定 (23:00-07:00)
+    private static final int FORBIDDEN_START_HOUR = 23; // 禁止時段開始小時(23點)
+    private static final int FORBIDDEN_END_HOUR = 7; // 禁止時段結束小時(7點)
+    
+    // 狀態標記
+    private boolean tenMinWarningSent = false; // 是否已發送10分鐘警告
+    private boolean threeMinWarningSent = false; // 是否已發送3分鐘警告
+    private boolean timemeout = false; // 時間是否已用盡
     
     private final NotificationListener listener; // 通知監聽器
-    private final SimpleDateFormat timeFormat;  // 時間格式化物件
-    
-    private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
-    private static final int FORBIDDEN_START_HOUR = 23; // 禁止開始時間(23:00)
-    private static final int FORBIDDEN_END_HOUR = 7;    // 禁止結束時間(07:00) 問就是我測到早上七點:)
+    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss"); // 時間格式化工具
+    private final boolean restrictTime; // 是否啟用時間限制
 
-    public static ZonedDateTime getNetworkTaipeiTime() throws Exception {
-        // 從NTP獲取UTC時間 (簡化版，實際應完整實現NTP協議)
-        long ntpTime = getNtpTime();
-        Instant instant = Instant.ofEpochSecond(ntpTime);
-        
-        // 轉換為台北時區
-        return instant.atZone(ZoneId.of("Asia/Taipei"));
-    }
-
-    private static long getNtpTime() throws Exception {
-        // 這裡是簡化實現，實際應完整實現NTP協議
-        DatagramSocket socket = new DatagramSocket();
-        InetAddress address = InetAddress.getByName(NTP_SERVER);
-        byte[] buffer = new byte[48];
-        buffer[0] = 0x1B;
-        
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, 123);
-        socket.send(packet);
-        socket.receive(packet);
-        socket.close();
-        
-        // 解析NTP時間戳
-        return ((buffer[40] & 0xFFL) << 24) | 
-               ((buffer[41] & 0xFFL) << 16) | 
-               ((buffer[42] & 0xFFL) << 8) | 
-               (buffer[43] & 0xFFL);
-    }
-
-    // 警告狀態標記
-    private boolean tenMinWarningSent = false;   // 10分鐘警告是否已發送
-    private boolean threeMinWarningSent = false; // 3分鐘警告是否已發送
-    private boolean timemeout = false; // 時間到
-    
     // 通知監聽器介面
     public interface NotificationListener {
-        void onTenMinuteWarning(String currentRealTime);  // 10分鐘警告回調(帶現實時間)
-        void onThreeMinuteWarning(String currentRealTime); // 3分鐘警告回調(帶現實時間)
-        void onTimeExhausted(String currentRealTime);     // 時間用完回調(帶現實時間)
-        void onTimeUpdate(String formattedTime, String realTime); // 時間更新回調
-        void onForbiddenTime(String currentRealTime); // 新增禁止時段通知
+        void onTenMinuteWarning(String currentTime); // 10分鐘警告回調
+        void onThreeMinuteWarning(String currentTime); // 3分鐘警告回調
+        void onTimeExhausted(String currentTime); // 時間用盡回調
+        void onTimeUpdate(String formattedTime, String currentTime); // 時間更新回調
+        void onForbiddenTime(String currentTime); // 禁止時段回調
     }
-    
-    private final boolean restrictTime;
 
+    // 建構子
     public Timecounter(Config config, NotificationListener listener) {
-        this.gameTime = config.getDurationMinutes() * 60; // 分鐘轉秒
-        this.listener = listener;
-        this.remainingTime = loadRemainingTime(config);
-        this.restrictTime = config.isRestrictTime();      // 加入是否限制時間
-        this.timeFormat = new SimpleDateFormat("HH:mm:ss");
+        this.dailyLimit = config.getDurationMinutes() * 60; // 從設定檔取得每日限制時間(轉換為秒)
+        this.listener = listener; // 設定監聽器
+        this.restrictTime = config.isRestrictTime(); // 從設定檔取得是否啟用時間限制
+        this.remainingTime = loadRemainingTime(); // 載入剩餘時間
     }
-    
-    // 獲取當前現實時間
-    public String getCurrentRealTime() {
-        return timeFormat.format(new Date());
+
+    // 載入剩餘時間狀態
+    private int loadRemainingTime() {
+        File file = new File(STATE_FILE); // 建立檔案物件
+        if (file.exists()) { // 檢查狀態檔案是否存在
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) { // 嘗試讀取檔案
+                String json = reader.readLine(); // 讀取JSON字串
+                JSONObject obj = new JSONObject(json); // 解析JSON物件
+                
+                // 檢查是否是同一天
+                String savedDate = obj.optString("date", ""); // 取得儲存的日期
+                String today = LocalDate.now().toString(); // 取得今日日期
+                
+                if (savedDate.equals(today)) { // 如果是同一天
+                    return obj.getInt("remainingTime"); // 返回儲存的剩餘時間
+                }
+            } catch (IOException | JSONException e) {
+                e.printStackTrace(); // 例外處理
+            }
+        }
+        return dailyLimit; // 預設返回每日限制
     }
-    
-    // 啟動計時器
+
+    // 儲存狀態
+    private void saveState() {
+        JSONObject obj = new JSONObject(); // 建立JSON物件
+        obj.put("date", LocalDate.now().toString()); // 儲存當前日期
+        obj.put("remainingTime", remainingTime); // 儲存剩餘時間
+        obj.put("totalPlayed", getTotalPlayedTime()); // 儲存已使用時間
+        
+        try (FileWriter writer = new FileWriter(STATE_FILE)) { // 嘗試寫入檔案
+            writer.write(obj.toString()); // 將JSON轉為字串寫入
+        } catch (IOException e) {
+            e.printStackTrace(); // 例外處理
+        }
+    }
+
+    // 刪除狀態檔案
+    private void deleteStateFile() {
+        File file = new File(STATE_FILE); // 建立檔案物件
+        if (file.exists()) { // 檢查檔案是否存在
+            file.delete(); // 刪除檔案
+        }
+    }
+
+    // 開始計時
     public void start() {
-        if (timer != null) {
-            timer.cancel();
+        if (timer != null) { // 如果計時器已存在
+            timer.cancel(); // 取消現有計時器
         }
         
-        resetFlags();
-        startTime = System.currentTimeMillis();
-        timer = new Timer();
+        resetFlags(); // 重置警告標記
+        startTime = System.currentTimeMillis(); // 記錄開始時間
+        timer = new Timer(); // 建立新計時器
         
-        // 設置定時任務，每1秒檢查一次
+        // 設定定期任務(每秒執行一次)
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                checkTime();
+                checkTime(); // 檢查時間
             }
-        }, 0, 1000);
-    }
-    
-    //檢查當前是否在禁止遊玩時段
-    //return true如果在禁止時段(23:00-01:00)
-        public boolean isForbiddenTime() {
-        if (!restrictTime) return false;  // 如果不限制，永遠回傳 false
-        Calendar calendar = Calendar.getInstance();
-        int hour = calendar.get(Calendar.HOUR_OF_DAY);
-        return hour >= FORBIDDEN_START_HOUR || hour < FORBIDDEN_END_HOUR;
+        }, 0, 1000); // 立即開始，間隔1秒
     }
 
-    // 檢查時間並觸發相應事件
+    // 檢查時間
     private void checkTime() {
-        // 獲取當前現實時間
-        String currentRealTime = getCurrentRealTime();
+        String currentTime = getCurrentTime(); // 取得當前時間字串
         
-        // 檢查是否在禁止時段
-        if (isForbiddenTime()) {
-            if (timer != null) {
-                timer.cancel();
-                timer = null;
-            }
-            if (listener != null) {
-                listener.onForbiddenTime(currentRealTime);
-            }
+        if (isForbiddenTime()) { // 如果是禁止時段
+            handleForbiddenTime(currentTime); // 處理禁止時段邏輯
             return;
         }
-        // 計算已過時間(毫秒)並轉為秒
-        long elapsedMillis = System.currentTimeMillis() - startTime;
-        remainingTime = gameTime - (int)(elapsedMillis / 1000);
         
-        // 確保剩餘時間不為負數
-        remainingTime = Math.max(remainingTime, 0);
+        updateRemainingTime(); // 更新剩餘時間
+        saveState(); // 儲存狀態
         
-        // 通知時間更新
-        if (listener != null) {
-            listener.onTimeUpdate(getFormattedRemainingTime(), currentRealTime);
+        if (listener != null) { // 如果有監聽器
+            listener.onTimeUpdate(getFormattedTime(), currentTime); // 觸發時間更新通知
+            
+            checkWarnings(currentTime); // 檢查是否需要發送警告
+            
+            if (remainingTime == 0 && !timemeout) { // 如果時間用盡且尚未通知
+                timemeout = true; // 標記時間已用盡
+                listener.onTimeExhausted(currentTime); // 觸發時間用盡通知
+                timer.cancel(); // 停止計時器
+            }
+        }
+    }
+
+    // 檢查是否為禁止時段
+    private boolean isForbiddenTime() {
+        if (!restrictTime) return false; // 如果未啟用時間限制，直接返回false
+        
+        Calendar cal = Calendar.getInstance(); // 取得日曆實例
+        int hour = cal.get(Calendar.HOUR_OF_DAY); // 取得當前小時
+        return hour >= FORBIDDEN_START_HOUR || hour < FORBIDDEN_END_HOUR; // 檢查是否在禁止時段
+    }
+
+    // 處理禁止時段
+    private void handleForbiddenTime(String currentTime) {
+        if (timer != null) { // 如果計時器存在
+            timer.cancel(); // 取消計時器
+            timer = null; // 清空計時器引用
         }
         
-        // 10分鐘警告檢查
+        if (listener != null) { // 如果有監聽器
+            listener.onForbiddenTime(currentTime); // 觸發禁止時段通知
+        }
+    }
+
+    // 更新剩餘時間
+    private void updateRemainingTime() {
+        long elapsed = (System.currentTimeMillis() - startTime) / 1000; // 計算已過時間(秒)
+        remainingTime = (int) Math.max(dailyLimit - elapsed, 0); // 計算剩餘時間(不小於0)
+    }
+
+    // 檢查警告
+    private void checkWarnings(String currentTime) {
+	    // 剩餘10分鐘且未發送警告
         if (remainingTime == TEN_MIN_WARNING && !tenMinWarningSent) {
-            tenMinWarningSent = true;
-            if (listener != null) {
-                listener.onTenMinuteWarning(currentRealTime);
-            }
+            tenMinWarningSent = true; // 標記已發送
+            listener.onTenMinuteWarning(currentTime); // 觸發10分鐘警告
         }
-        
-        // 3分鐘警告檢查
+
+         // 剩餘3分鐘且未發送警告
         if (remainingTime == THREE_MIN_WARNING && !threeMinWarningSent) {
-            threeMinWarningSent = true;
-            if (listener != null) {
-                listener.onThreeMinuteWarning(currentRealTime);
-            }
+            threeMinWarningSent = true; // 標記已發送
+            listener.onThreeMinuteWarning(currentTime); // 觸發3分鐘警告
         }
-        
-        // 時間用完檢查
+	    // 時間用完檢查
         if (remainingTime == 0 && !timemeout) {
             timemeout = true;
             timer.cancel();
             if (listener != null) {
-                listener.onTimeExhausted(currentRealTime);
+                listener.onTimeExhausted(currentTime);
             }
-        }
-    }
-    private int loadRemainingTime(Config config) {
-        File file = new File(STATE_FILE);
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String json = reader.readLine();
-                JSONObject obj = new JSONObject(json);
-                return obj.getInt("remainingTime");
-            } catch (IOException | JSONException e) {
-                e.printStackTrace();
-            }
-            }
-            return config.getDurationMinutes() * 60;
-    }
-
-    private void saveRemainingTime() {
-    try (FileWriter writer = new FileWriter(STATE_FILE)) {
-        writer.write("{\"remainingTime\":" + remainingTime + "}");
-    } catch (IOException e) {
-        e.printStackTrace();
-        }
-    }
-    private void deleteRemainingTimeFile() {
-        File file = new File(STATE_FILE);
-        if (file.exists()) {
-            file.delete();
         }
     }
 
-    // 暫停計時器
+    // 暫停計時
     public void pause() {
-        if (timer != null) {
-            timer.cancel();                     // 取消計時器
-            timer = null;
-            saveRemainingTime();
+        if (timer != null) { // 如果計時器存在
+            timer.cancel(); // 取消計時器
+            timer = null; // 清空計時器引用
+            saveState(); // 儲存狀態
         }
     }
-    
-    // 恢復計時器
+
+    // 恢復計時
     public void resume() {
-        if (timer == null) {
-            start();                            // 重新開始計時
+        if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
+            // 重新計算開始時間(考慮已過時間)
+            startTime = System.currentTimeMillis() - ((dailyLimit - remainingTime) * 1000L);
+            start(); // 重新開始計時
         }
     }
-    
+
     // 重置計時器
     public void reset() {
-        pause();                                // 先暫停計時器
-        remainingTime = gameTime;               // 重置剩餘時間
-        resetFlags();
-        deleteRemainingTimeFile();                           // 重置警告狀態
+        pause(); // 暫停計時
+        remainingTime = dailyLimit; // 重置剩餘時間
+        resetFlags(); // 重置警告標記
+        deleteStateFile(); // 刪除狀態檔案
     }
-    
-    // 獲取格式化剩餘時間(HH:MM:SS)
-    public String getFormattedRemainingTime() {
-        int hours = remainingTime / 3600;
-        int minutes = (remainingTime % 3600) / 60;
-        int seconds = remainingTime % 60;
-        
-        if (hours > 0) {
-            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
-        } else {
-            return String.format("%02d:%02d", minutes, seconds);
-        }
+
+    // 取得總共已使用時間
+    public int getTotalPlayedTime() {
+        return dailyLimit - remainingTime; // 計算已使用時間
     }
-    
-    // 獲取今日已遊戲時間佔比
-    public float getTodayGameTimeRatio() {
-        Calendar calendar = Calendar.getInstance();
-        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+
+    // 取得格式化後的剩餘時間
+    public String getFormattedTime() {
+        int hours = remainingTime / 3600; // 計算小時
+        int minutes = (remainingTime % 3600) / 60; // 計算分鐘
+        int seconds = remainingTime % 60; // 計算秒數
         
-        // 假設白天(8~22點)是主要遊戲時間
-        if (hour >= 8 && hour < 22) {
-            return hour / 24.0f;
+        if (hours > 0) { // 如果有小時
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds); // 回傳HH:MM:SS格式
         }
-        return 0.0f;
+        return String.format("%02d:%02d", minutes, seconds); // 回傳MM:SS格式
+    }
+
+    // 取得當前時間字串
+    private String getCurrentTime() {
+        return timeFormat.format(new Date()); // 格式化當前時間
     }
 
     // 重置警告標記
     private void resetFlags() {
-        tenMinWarningSent = false;               // 重置10分鐘警告標記
-        threeMinWarningSent = false;             // 重置3分鐘警告標記
+        tenMinWarningSent = false; // 重置10分鐘警告標記
+        threeMinWarningSent = false; // 重置3分鐘警告標記
+        timemeout = false; // 重置時間用盡標記
     }
 }
