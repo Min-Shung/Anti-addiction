@@ -1,7 +1,9 @@
 package config;
 import java.io.*;
+
 import java.util.Base64;
 import java.util.Scanner;
+import config.Config;
 
 public class PasswordManagerPersistent {
     private static final String CONFIG_FILE = "config.txt";
@@ -92,21 +94,22 @@ public class PasswordManagerPersistent {
                     System.out.println("密碼錯誤，請再試一次。");
                 }
             }
+            //目前
+            System.out.println("目前使用時長設定為：" + config.getDurationMinutes() + " 分鐘");
+            System.out.println("限制時間功能為：" + (config.isRestrictTime() ? "開啟" : "關閉"));
+            
+            //重設
+            System.out.print("請輸入新的使用時長（分鐘）：");
+            int duration = Integer.parseInt(scanner.nextLine());
+            config.setDurationMinutes(duration);
 
-            System.out.print("是否要重新設定時間與限制？(true/false)：");
-            boolean shouldReset = Boolean.parseBoolean(scanner.nextLine());
-            if (shouldReset) {
-                System.out.print("請輸入新的使用時長（分鐘）：");
-                int duration = Integer.parseInt(scanner.nextLine());
-                config.setDurationMinutes(duration);
+            System.out.print("是否限制時間？(true/false)：");
+            boolean restrictTime = Boolean.parseBoolean(scanner.nextLine());
+            config.setRestrictTime(restrictTime);
 
-                System.out.print("是否限制時間？(true/false)：");
-                boolean restrictTime = Boolean.parseBoolean(scanner.nextLine());
-                config.setRestrictTime(restrictTime);
-
-                saveConfig(config);
-                System.out.println("新設定已儲存！");
-            }
+            saveConfig(config);
+            System.out.println("新設定已儲存！");
+            
         }
 
         return config; // 回傳 Config 物件供其他模組使用
