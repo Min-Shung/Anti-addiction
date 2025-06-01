@@ -162,7 +162,7 @@ public class Timecounter {
             return;
         }
         
-        updateRemainingTime(); // 更新剩餘時間
+        remainingTime = Math.max(remainingTime - 1, 0); // 直接倒數
         saveState(); // 儲存狀態
         
         if (listener != null) { // 如果有監聽器
@@ -224,6 +224,9 @@ public class Timecounter {
             timer.cancel();
             if (listener != null) {
                 listener.onTimeExhausted(currentTime);
+
+                saveState();
+                showSavedState();
             }
         }
     }
@@ -235,7 +238,6 @@ public class Timecounter {
             timer = null; // 清空計時器引用
             saveState(); // 儲存狀態
 
-            saveState();
             showSavedState();
         }
     }
@@ -243,9 +245,14 @@ public class Timecounter {
     // 恢復計時
     public void resume() {
         if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
-            // 重新計算開始時間(考慮已過時間)
-            startTime = System.currentTimeMillis() - ((dailyLimit - remainingTime) * 1000L);
-            start(); // 重新開始計時
+            resetFlags();
+            timer = new Timer();
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    checkTime();
+                }
+            }, 0, 1000);
         }
     }
 
