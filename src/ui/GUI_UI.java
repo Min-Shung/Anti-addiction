@@ -25,7 +25,7 @@ public class GUI_UI extends JFrame {
         loadConfig();
 
         // 設置主窗口
-        setTitle("防止沉迷");
+        setTitle("時間管理小幫手");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // 居中顯示
