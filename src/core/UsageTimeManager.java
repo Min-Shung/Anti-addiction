@@ -25,8 +25,8 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     private final Timecounter timecounter;
     private Config config;
 
-    private boolean timing = false;
-    private boolean timeUp = false;
+    private boolean timing = false;//時間用完
+    private boolean timeUp = false;//禁止時間
 
     private final NotificationListener notificationListener;
 
@@ -51,7 +51,13 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     private void checkGameAndEnforceRules() {
 
         List<String> runningGames = GameDetection.getRunningGames(DetectGameProcess.gameExecutables);
-        boolean gameRunning = !runningGames.isEmpty();
+        boolean gameRunning = !runningGames.isEmpty();//是否有遊戲開啟
+
+            if (gameRunning) {//print有沒有執行
+                System.out.println("遊戲狀態：啟動，正在執行的遊戲：" + runningGames);
+            } else {
+                System.out.println("無遊戲開啟");
+            }
 
         // 每日午夜重置使用時間
          LocalDate today = LocalDate.now();
@@ -70,14 +76,14 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             return;
         }
 
-        if (gameRunning) {
+        if (gameRunning) {//有開
             if (!timing && !timeUp) {
                 startTiming();
             }
         } else {
-            if (timing) {
+            //if (timing) {
                 pauseTimingAndSave();
-            }
+            //}
         }
     }
 
@@ -168,9 +174,10 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     @Override
     public void onTimeExhausted(String currentRealTime) {
+        System.out.println("遊戲時間已用盡，將強制關閉遊戲！"+ currentRealTime);
         notificationListener.notify("ERROR", "時間已到", "遊戲時間已用盡，將強制關閉遊戲！" + currentRealTime);
         timeUp = true;
-        timing = false;
+        //timing = false;
         // 可強制關閉遊戲
         KillGame.killRunningGames();
     }
@@ -183,9 +190,10 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     @Override
     public void onForbiddenTime(String currentRealTime) {
+        System.out.println("目前為禁止遊戲時段，已停止計時。" + currentRealTime);
         notificationListener.notify("ERROR", "禁止遊戲時間", "目前為禁止遊戲時段，已停止計時。" + currentRealTime);
         timeUp = true;
-        timing = false;
+        //timing = false;
         // 強制關閉遊戲
         KillGame.killRunningGames();
     }
