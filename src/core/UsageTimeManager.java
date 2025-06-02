@@ -42,7 +42,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
         startTiming();
 
         // 定期(1分鐘)檢查遊戲狀態和時間規則
-        scheduler.scheduleAtFixedRate(this::checkGameAndEnforceRules, 0, 1, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(this::checkGameAndEnforceRules, 0, 10, TimeUnit.SECONDS);
     }
 
     // 主邏輯：判斷遊戲狀態與時間限制
