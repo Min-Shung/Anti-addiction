@@ -4,6 +4,8 @@ import java.io.*;
 import java.util.Base64;
 import java.util.Scanner;
 import config.Config;
+import report.WeeklyReportPrinter;
+import report.WeeklyUsageReporter; 
 
 public class PasswordManagerPersistent {
     private static final String CONFIG_FILE = "config.txt";
@@ -69,6 +71,7 @@ public class PasswordManagerPersistent {
         Config config = loadConfig();
 
         if (config == null) {  // 第一次使用
+            System.out.print("查無帳號，請先註冊!\n");
             System.out.print("請輸入密碼：");
             String password = scanner.nextLine();
 
@@ -99,17 +102,43 @@ public class PasswordManagerPersistent {
             System.out.println("限制時間功能為：" + (config.isRestrictTime() ? "開啟" : "關閉"));
             
             //重設
-            System.out.print("請輸入新的使用時長（分鐘）：");
-            int duration = Integer.parseInt(scanner.nextLine());
-            config.setDurationMinutes(duration);
-
-            System.out.print("是否限制時間？(true/false)：");
-            boolean restrictTime = Boolean.parseBoolean(scanner.nextLine());
-            config.setRestrictTime(restrictTime);
-
-            saveConfig(config);
-            System.out.println("新設定已儲存！");
             
+            System.out.print("是否要重新設定時間與限制？(true/false)：");
+            boolean shouldReset = Boolean.parseBoolean(scanner.nextLine());
+            if (shouldReset) {
+                System.out.print("請輸入新的使用時長（分鐘）：");
+                int duration = Integer.parseInt(scanner.nextLine());
+                config.setDurationMinutes(duration);
+
+                System.out.print("是否限制時間？(true/false)：");
+                boolean restrictTime = Boolean.parseBoolean(scanner.nextLine());
+                config.setRestrictTime(restrictTime);
+
+                saveConfig(config);
+                System.out.println("新設定已儲存！");
+            }    
+            boolean exit = false;
+            while (!exit) {
+                System.out.println("\n輸入指令：");
+                System.out.println("  showreport  顯示上週使用報告");
+                System.out.println("  exit        離開程式");
+                System.out.print("請輸入：");
+
+                String cmd = scanner.nextLine().trim().toLowerCase();
+
+                switch (cmd) {
+                    case "showreport":
+                        WeeklyReportPrinter.printLastWeekReport();
+                        break;
+                    case "exit":
+                        exit = true;
+                        System.out.println("遊戲偵測已啟動");
+                        break;
+                    default:
+                        System.out.println("未知指令，請重新輸入。");
+                }
+            }
+
         }
 
         return config; // 回傳 Config 物件供其他模組使用
