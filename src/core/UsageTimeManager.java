@@ -28,6 +28,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     private boolean timing = false;//時間用完
     private boolean timeUp = false;//禁止時間
+    private boolean firsttimestart = true;//第一次啟動
 
     private final NotificationListener notificationListener;
 
@@ -40,7 +41,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     // 啟動整個管理服務
     public void start() {
         // 開始 Timecounter 的秒級計時
-        startTiming();
+        //startTiming();
 
         // 定期(1分鐘)檢查遊戲狀態和時間規則
         scheduler.scheduleAtFixedRate(this::checkGameAndEnforceRules, 0, 10, TimeUnit.SECONDS);
@@ -90,8 +91,14 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     // 開始計時
     public void startTiming() {
+
         if (!timing && !timeUp) {
-            timecounter.start();
+            if(firsttimestart){
+                timecounter.start();
+                firsttimestart=false;
+            }else{
+                timecounter.resume();
+            }
             timing = true;
         }
     }
@@ -141,6 +148,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             timeUp = false;
             timecounter.reset();
             timing = false;
+            firsttimestart=true;
         }
     }
 
