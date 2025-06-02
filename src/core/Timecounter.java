@@ -23,6 +23,8 @@ public class Timecounter {
     private final int dailyLimit; // 每日限制時間(秒)
     private static final String STATE_FILE = "remaining_time_state.json"; // 狀態儲存檔案名稱
     
+    private long pastSeconds = 0; // 加入新欄位記錄之前累積使用的秒數
+    
     // 警告時間設定
     private static final int TEN_MIN_WARNING = 600; // 10分鐘警告閾值(600秒)
     private static final int THREE_MIN_WARNING = 180; // 3分鐘警告閾值(180秒)
@@ -143,6 +145,8 @@ public class Timecounter {
         resetFlags(); // 重置警告標記
         startTime = System.currentTimeMillis(); // 記錄開始時間
         timer = new Timer(); // 建立新計時器
+
+        pastSeconds = dailyLimit - remainingTime;
         
         // 設定定期任務(每秒執行一次)
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -201,8 +205,9 @@ public class Timecounter {
 
     // 更新剩餘時間
     private void updateRemainingTime() {
-        long elapsed = (System.currentTimeMillis() - startTime) / 1000; // 計算已過時間(秒)
-        remainingTime = (int) Math.max(dailyLimit - elapsed, 0); // 計算剩餘時間(不小於0)
+        long elapsed = (System.currentTimeMillis() - startTime) / 1000;
+        long totalElapsed = pastSeconds + elapsed;
+        remainingTime = (int) Math.max(dailyLimit - totalElapsed, 0);
     }
 
     // 檢查警告
