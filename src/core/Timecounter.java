@@ -241,6 +241,7 @@ public class Timecounter {
         if (timer != null) { // 如果計時器存在
             timer.cancel(); // 取消計時器
             timer = null; // 清空計時器引用
+            System.out.println("(在timecounter244)剩餘時間:"+remainingTime);
             saveState(); // 儲存狀態
         }
     }
@@ -250,6 +251,7 @@ public class Timecounter {
         if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
             // 重新計算開始時間(考慮已過時間)
             startTime = System.currentTimeMillis() - ((dailyLimit - remainingTime) * 1000L);
+            System.out.println("(在timecounter254)剩餘時間:"+startTime);
             start(); // 重新開始計時
         }
     }
