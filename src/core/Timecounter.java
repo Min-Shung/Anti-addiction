@@ -254,8 +254,9 @@ public class Timecounter {
     // 恢復計時
     public void resume() {
         if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
+            pastSeconds = dailyLimit - remainingTime;
             // 重新計算開始時間(考慮已過時間)
-            startTime = System.currentTimeMillis() - ((dailyLimit - remainingTime) * 1000L);
+            startTime = System.currentTimeMillis();
             System.out.println("(在timecounter254)剩餘時間:"+remainingTime);
             start(); // 重新開始計時
         }
@@ -265,6 +266,7 @@ public class Timecounter {
     public void reset() {
         pause(); // 暫停計時
         remainingTime = dailyLimit; // 重置剩餘時間
+        pastSeconds = 0;
         resetFlags(); // 重置警告標記
         deleteStateFile(); // 刪除狀態檔案
     }
