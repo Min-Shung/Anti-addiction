@@ -219,7 +219,7 @@ public class Timecounter {
             listener.onThreeMinuteWarning(currentTime); // 觸發3分鐘警告
         }
 	    // 時間用完檢查
-        if (remainingTime == 0 && !timemeout) {
+        if (remainingTime <= 0 && !timemeout) {
             timemeout = true;
             timer.cancel();
             if (listener != null) {
@@ -241,7 +241,7 @@ public class Timecounter {
         if (timer != null) { // 如果計時器存在
             timer.cancel(); // 取消計時器
             timer = null; // 清空計時器引用
-            System.out.println("(在timecounter244)剩餘時間:"+remainingTime);
+            System.out.println("(在timecounter244)剩餘時間:"+remainingTime);//檢查剩餘時間有沒有用到updateRemainingTime
             saveState(); // 儲存狀態
         }
     }
@@ -251,7 +251,7 @@ public class Timecounter {
         if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
             // 重新計算開始時間(考慮已過時間)
             startTime = System.currentTimeMillis() - ((dailyLimit - remainingTime) * 1000L);
-            System.out.println("(在timecounter254)剩餘時間:"+startTime);
+            System.out.println("(在timecounter254)剩餘時間:"+remainingTime);
             start(); // 重新開始計時
         }
     }
