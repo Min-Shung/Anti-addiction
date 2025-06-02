@@ -17,6 +17,7 @@ import detection.DetectGameProcess;
 import detection.GameDetection;
 import detection.KillGame;
 import notifier.NotificationListener;
+import report.WeeklyUsageReporter;
 
 public class UsageTimeManager implements Timecounter.NotificationListener {
 
@@ -102,6 +103,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             timing = false;
             saveUsageRecord();
         }
+
     }
 
     // 停止計時，時間用盡狀態
@@ -148,12 +150,13 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
         try (FileWriter writer = new FileWriter(file, true)) { // 以附加模式開啟檔案
             String date = LocalDate.now().toString();
-            int usedSeconds = timecounter.getTotalPlayedTime();
+            int usedSeconds = timecounter.getTotalPlayedTime();//使用時間
             int usedMinutes = usedSeconds / 60;
             int remainingSeconds = config.getDurationMinutes() * 60 - usedSeconds;
 
             writer.write(String.format("日期：%s，使用時間：%d 分鐘，剩餘時間：%d 秒\n", 
                             date, usedMinutes, remainingSeconds));
+            WeeklyUsageReporter.recordDailyUsage(config.getDurationMinutes(), remainingSeconds);
         } catch (IOException e) {
             e.printStackTrace();
         }
