@@ -29,6 +29,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     private boolean timing = false;//時間用完
     private boolean timeUp = false;//禁止時間
     private boolean firsttimestart = true;//第一次啟動
+    private boolean wasGameRunning = false; // 追蹤遊戲是否從未啟動變成啟動
 
     private final NotificationListener notificationListener;
 
@@ -60,6 +61,13 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             } else {
                 System.out.println("無遊戲開啟");
             }
+            // 發送開始與暫停通知（只在狀態變化時）
+            if (gameRunning && !wasGameRunning) {
+                notificationListener.notify("INFO", "遊戲開始", "遊戲已啟動：" + runningGames);
+            } else if (!gameRunning && wasGameRunning) {
+                notificationListener.notify("INFO", "遊戲暫停", "偵測到遊戲已關閉或暫停。");
+            }
+            wasGameRunning = gameRunning;
 
         // 每日午夜重置使用時間
          LocalDate today = LocalDate.now();
@@ -105,12 +113,11 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
     // 暫停計時並儲存紀錄
     public void pauseTimingAndSave() {
+         timecounter.pause();  // 永遠停止 timer，避免重複跑
         if (timing) {
-            timecounter.pause();
-            timing = false;
             saveUsageRecord();
         }
-
+        timing = false;
     }
 
     // 停止計時，時間用盡狀態

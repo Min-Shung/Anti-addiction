@@ -1,3 +1,4 @@
+
 package core;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -22,8 +23,6 @@ public class Timecounter {
     private int remainingTime; // 剩餘時間(秒)
     private final int dailyLimit; // 每日限制時間(秒)
     private static final String STATE_FILE = "remaining_time_state.json"; // 狀態儲存檔案名稱
-    
-    private long pastSeconds = 0; // 加入新欄位記錄之前累積使用的秒數
     
     // 警告時間設定
     private static final int TEN_MIN_WARNING = 600; // 10分鐘警告閾值(600秒)
@@ -108,7 +107,7 @@ public class Timecounter {
                     return obj.getInt("remainingTime"); // 返回儲存的剩餘時間
                 }
             } catch (IOException | JSONException e) {
-                e.printStackTrace(); // 例外處理
+                 // 例外處理
             }
         }
         return dailyLimit; // 預設返回每日限制
@@ -145,8 +144,6 @@ public class Timecounter {
         resetFlags(); // 重置警告標記
         startTime = System.currentTimeMillis(); // 記錄開始時間
         timer = new Timer(); // 建立新計時器
-
-        pastSeconds = dailyLimit - remainingTime;
         
         // 設定定期任務(每秒執行一次)
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -205,9 +202,8 @@ public class Timecounter {
 
     // 更新剩餘時間
     private void updateRemainingTime() {
-        long elapsed = (System.currentTimeMillis() - startTime) / 1000;
-        long totalElapsed = pastSeconds + elapsed;
-        remainingTime = (int) Math.max(dailyLimit - totalElapsed, 0);
+        long elapsed = (System.currentTimeMillis() - startTime) / 1000; // 計算已過時間(秒)
+        remainingTime = (int) Math.max(dailyLimit - elapsed, 0); // 計算剩餘時間(不小於0)
     }
 
     // 檢查警告
@@ -243,30 +239,33 @@ public class Timecounter {
 
     // 暫停計時
     public void pause() {
-        if (timer != null) { // 如果計時器存在
-            timer.cancel(); // 取消計時器
-            timer = null; // 清空計時器引用
-            System.out.println("(在timecounter244)剩餘時間:"+remainingTime);//檢查剩餘時間有沒有用到updateRemainingTime
-            saveState(); // 儲存狀態
+        if (timer != null) {
+        timer.cancel();
+        timer = null; // 防止後續 resume() 誤判有計時器
         }
+        updateRemainingTime(); // 保留時間
+        saveState();           // 儲存狀態
     }
 
     // 恢復計時
     public void resume() {
-        if (timer == null && remainingTime > 0) { // 如果計時器不存在且還有剩餘時間
-            pastSeconds = dailyLimit - remainingTime;
-            // 重新計算開始時間(考慮已過時間)
-            startTime = System.currentTimeMillis();
-            System.out.println("(在timecounter254)剩餘時間:"+remainingTime);
-            start(); // 重新開始計時
-        }
+         if (timer != null) return; // 已有 Timer 不重啟
+
+        resetFlags();
+        startTime = System.currentTimeMillis();
+        timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                checkTime();
+            }
+        }, 0, 1000);
     }
 
     // 重置計時器
     public void reset() {
         pause(); // 暫停計時
         remainingTime = dailyLimit; // 重置剩餘時間
-        pastSeconds = 0;
         resetFlags(); // 重置警告標記
         deleteStateFile(); // 刪除狀態檔案
     }
