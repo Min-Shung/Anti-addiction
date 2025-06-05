@@ -72,7 +72,13 @@ public class Timecounter {
 
     // 獲取當前現實時間
     public String getCurrentRealTime() {
-        return timeFormat.format(new Date());
+        try {
+            ZonedDateTime networkTime = getNetworkTaipeiTime(); // 嘗試抓取網路時間
+            return timeFormat.format(Date.from(networkTime.toInstant())); // 轉成 Date 格式後格式化
+        } catch (Exception e) {
+            // 抓不到網路時間時退而使用本地系統時間
+            return timeFormat.format(new Date());
+        }
     }
     
     // 通知監聽器介面
