@@ -83,7 +83,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             if (gameRunning) {
                 KillGame.killRunningGames();
             if (config.isRestrictTime()) {//禁止時間段
-                notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在23點~7點間遊玩");
+                notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在23:00~07:00遊玩");
             }else{//時間用盡
                 notificationListener.notify("ERROR", "遊戲時間用盡", "將強制關閉遊戲");
             }
@@ -221,7 +221,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     @Override
     public void onForbiddenTime(String currentRealTime) {
         System.out.println("目前為禁止遊戲時段" + currentRealTime);
-        notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在 23:00 ~ 07:00 遊玩");
+        notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在23:00~07:00遊玩");
         timeUp = true;
         //timing = false;
         // 強制關閉遊戲
