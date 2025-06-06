@@ -26,9 +26,9 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     private final Timecounter timecounter;
     private Config config;
 
-    private boolean timing = false;//時間用完
-    private boolean timeUp = false;//禁止時間
-    private boolean firsttimestart = true;//第一次啟動
+    private boolean timing = false;//計時中
+    private boolean timeUp = false;//時間用完 || 禁止時間
+    private boolean firstTimeStart = true;//第一次啟動
     private boolean wasGameRunning = false; // 追蹤遊戲是否從未啟動變成啟動
 
     private final NotificationListener notificationListener;
@@ -57,15 +57,17 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
         boolean gameRunning = !runningGames.isEmpty();//是否有遊戲開啟
 
             if (gameRunning) {//print有沒有執行
-                System.out.println("遊戲狀態：啟動，正在執行的遊戲：" + runningGames);
+                System.out.println("偵測到執行中的遊戲：" + runningGames);
             } else {
                 System.out.println("無遊戲開啟");
             }
             // 發送開始與暫停通知（只在狀態變化時）
-            if (gameRunning && !wasGameRunning) {
-                notificationListener.notify("INFO", "遊戲開始", "遊戲已啟動：" + runningGames);
-            } else if (!gameRunning && wasGameRunning) {
-                notificationListener.notify("INFO", "遊戲暫停", "偵測到遊戲已關閉或暫停。");
+            if(!isRestrictedNow()){//非禁止時間段
+                if (gameRunning && !wasGameRunning) {
+                    notificationListener.notify("INFO", "計時開始", "遊戲已啟動：" + runningGames);
+                } else if (!gameRunning && wasGameRunning) {
+                    notificationListener.notify("INFO", "計時暫停", "偵測到遊戲已關閉或暫停");
+                }
             }
             wasGameRunning = gameRunning;
 
@@ -80,7 +82,11 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
         if (isRestrictedNow()) {
             if (gameRunning) {
                 KillGame.killRunningGames();
-                notificationListener.notify("ERROR", "禁止遊戲時間", "目前為禁止遊戲時段。" );
+            if (config.isRestrictTime()) {//禁止時間段
+                notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在23點~7點間遊玩");
+            }else{//時間用盡
+                notificationListener.notify("ERROR", "遊戲時間用盡", "將強制關閉遊戲");
+            }
             }
             pauseTimingAndSave();
             return;
@@ -101,9 +107,9 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     public void startTiming() {
 
         if (!timing && !timeUp) {
-            if(firsttimestart){
+            if(firstTimeStart){
                 timecounter.start();
-                firsttimestart=false;
+                firstTimeStart=false;
             }else{
                 timecounter.resume();
             }
@@ -155,7 +161,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
             timeUp = false;
             timecounter.reset();
             timing = false;
-            firsttimestart=true;
+            firstTimeStart=true;
         }
     }
 
@@ -179,21 +185,26 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
 
     // ----- Timecounter.NotificationListener 回調實作 -----
-
+    //十分鐘到數通知
     @Override
     public void onTenMinuteWarning(String currentRealTime) {
-        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩10分鐘！ 現在時間:" + currentRealTime);
+        notificationListener.notify("WARNING", "剩餘時間提醒", "遊戲將於十分鐘後關閉");
+        //notificationListener.notify("WARNING", "剩餘時間提醒", "還剩10分鐘！ 現在時間:" + currentRealTime);
     }
 
+    //三分鐘倒數通知
     @Override
     public void onThreeMinuteWarning(String currentRealTime) {
-        notificationListener.notify("WARNING", "剩餘時間提醒", "還剩3分鐘！ 現在時間:" + currentRealTime);
+        notificationListener.notify("WARNING", "剩餘時間提醒", "遊戲將於三分鐘後關閉");
+        //notificationListener.notify("WARNING", "剩餘時間提醒", "還剩3分鐘！ 現在時間:" + currentRealTime);
     }
 
+    //時間用盡
     @Override
     public void onTimeExhausted(String currentRealTime) {
         System.out.println("遊戲時間已用盡，將強制關閉遊戲！"+ currentRealTime);
-        notificationListener.notify("ERROR", "時間已到", "遊戲時間已用盡，將強制關閉遊戲！" + currentRealTime);
+        notificationListener.notify("ERROR", "遊戲時間用盡", "將強制關閉遊戲");
+        //notificationListener.notify("ERROR", "時間已到", "遊戲時間已用盡，將強制關閉遊戲！" + currentRealTime);
         timeUp = true;
         //timing = false;
         // 可強制關閉遊戲
@@ -206,10 +217,11 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
         // System.out.println("剩餘時間：" + formattedTime);
     }
 
+    //禁止時間段
     @Override
     public void onForbiddenTime(String currentRealTime) {
-        System.out.println("目前為禁止遊戲時段，已停止計時。" + currentRealTime);
-        notificationListener.notify("ERROR", "禁止遊戲時間", "目前為禁止遊戲時段，已停止計時。" + currentRealTime);
+        System.out.println("目前為禁止遊戲時段" + currentRealTime);
+        notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在23點~7點間遊玩");
         timeUp = true;
         //timing = false;
         // 強制關閉遊戲
