@@ -185,7 +185,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
 
 
     // ----- Timecounter.NotificationListener 回調實作 -----
-    //十分鐘到數通知
+    //十分鐘倒數通知
     @Override
     public void onTenMinuteWarning(String currentRealTime) {
         notificationListener.notify("WARNING", "剩餘時間提醒", "遊戲將於十分鐘後關閉");
@@ -221,7 +221,7 @@ public class UsageTimeManager implements Timecounter.NotificationListener {
     @Override
     public void onForbiddenTime(String currentRealTime) {
         System.out.println("目前為禁止遊戲時段" + currentRealTime);
-        notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在23點~7點間遊玩");
+        notificationListener.notify("ERROR", "禁止遊戲時段", "將強制關閉遊戲，\n請勿在 23:00 ~ 07:00 遊玩");
         timeUp = true;
         //timing = false;
         // 強制關閉遊戲
