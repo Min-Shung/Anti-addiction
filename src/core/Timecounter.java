@@ -83,13 +83,7 @@ public class Timecounter {
 
     // 獲取當前現實時間
     public String getCurrentRealTime() {
-        try {
-            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                    .format(getNetworkTaipeiTime());
-        } catch (Exception e) {
-            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                    .format(ZonedDateTime.now(ZoneId.of("Asia/Taipei")));
-        }
+        return timeFormat.format(new Date());
     }
     
     // 通知監聽器介面
@@ -185,14 +179,21 @@ public class Timecounter {
     // 檢查時間
     private void checkTime() {
         String currentTime = getCurrentTime(); // 取得當前時間字串
-        LocalDate today = LocalDate.now();
-
-        if (!today.equals(lastCheckedDate)) {
-            System.out.println("[跨日偵測] 新的一天開始，重置使用時間。");
-            lastCheckedDate = today;
-            reset();          // 重置剩餘時間與狀態
-            start();          // 重新啟動計時器
-            return;           // 當前不繼續執行後續檢查
+        
+        // 取得當前日期（優先使用NTP時間，失敗時使用本機時間）
+        LocalDate currentDate;
+        try {
+            currentDate = getNetworkTaipeiTime().toLocalDate();
+        } catch (Exception e) {
+            currentDate = LocalDate.now();
+        }
+        
+        // 日期變化偵測
+        if (!currentDate.equals(lastCheckedDate)) {
+            lastCheckedDate = currentDate;
+            reset();
+            start();
+            return;
         }
         
         if (isForbiddenTime()) { // 如果是禁止時段
@@ -305,7 +306,12 @@ public class Timecounter {
         remainingTime = dailyLimit; // 重置剩餘時間
         resetFlags(); // 重置警告標記
         deleteStateFile(); // 刪除狀態檔案
-        lastCheckedDate = LocalDate.now(); // 補上更新日期
+        // 確保重置時更新日期記錄
+        try {
+            lastCheckedDate = getNetworkTaipeiTime().toLocalDate();
+        } catch (Exception e) {
+            lastCheckedDate = LocalDate.now();
+        }
     }
 
     // 取得總共已使用時間
