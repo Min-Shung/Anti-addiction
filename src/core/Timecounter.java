@@ -83,7 +83,14 @@ public class Timecounter {
 
     // 獲取當前現實時間
     public String getCurrentRealTime() {
-        return timeFormat.format(new Date());
+        //return timeFormat.format(new Date());
+        try {
+            ZonedDateTime now = getNetworkTaipeiTime();
+            return now.toLocalDate().toString(); // "yyyy-MM-dd"
+        } catch (Exception e) {
+            return ZonedDateTime.now(ZoneId.of("Asia/Taipei"))
+                    .toLocalDate().toString();
+        }
     }
     
     // 通知監聽器介面
