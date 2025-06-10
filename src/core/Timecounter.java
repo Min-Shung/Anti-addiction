@@ -3,6 +3,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.text.SimpleDateFormat;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -13,57 +14,68 @@ import java.util.Date;
 import java.util.Calendar;
 import org.json.JSONObject;
 import org.json.JSONException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 
 import config.Config;
 
 public class Timecounter {
     private Timer timer; // 計時器實例
+    private long lastSaveTime = 0; // 上次儲存時間（毫秒）
     private long startTime; // 開始時間(毫秒)
     private int remainingTime; // 剩餘時間(秒)
     private final int dailyLimit; // 每日限制時間(秒)
     private static final String STATE_FILE = "remaining_time_state.json"; // 狀態儲存檔案名稱
+    private LocalDate lastCheckedDate = LocalDate.now(); // 記錄上次檢查的日期
+    private static final String NTP_SERVER = "time.google.com";
+    private static final long NTP_TO_UNIX_EPOCH_OFFSET = 2208988800L; // 1900 to 1970
     
     // 警告時間設定
     private static final int TEN_MIN_WARNING = 600; // 10分鐘警告閾值(600秒)
     private static final int THREE_MIN_WARNING = 180; // 3分鐘警告閾值(180秒)
     
     // 禁止時段設定 (23:00-07:00)
-    private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
+    //private static final String NTP_SERVER = "tw.pool.ntp.org"; // 台灣NTP伺服器
     private static final int FORBIDDEN_START_HOUR = 23; // 禁止時段開始小時(23點)
     private static final int FORBIDDEN_END_HOUR = 7; // 禁止時段結束小時(7點)
     
     public static ZonedDateTime getNetworkTaipeiTime() throws Exception {
-        // 從NTP獲取UTC時間
-        long ntpTime = getNtpTime();
-        Instant instant = Instant.ofEpochSecond(ntpTime);
-        
-        // 轉換為台北時區
+        long ntpMillis = getNtpTime();
+        Instant instant = Instant.ofEpochMilli(ntpMillis);
         return instant.atZone(ZoneId.of("Asia/Taipei"));
     }
 
     private static long getNtpTime() throws Exception {
         DatagramSocket socket = new DatagramSocket();
+        socket.setSoTimeout(3000);
+
         InetAddress address = InetAddress.getByName(NTP_SERVER);
         byte[] buffer = new byte[48];
         buffer[0] = 0x1B;
-        
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, 123);
-        socket.send(packet);
-        socket.receive(packet);
+
+        DatagramPacket request = new DatagramPacket(buffer, buffer.length, address, 123);
+        socket.send(request);
+
+        DatagramPacket response = new DatagramPacket(buffer, buffer.length);
+        socket.receive(response);
         socket.close();
-        
-        // 解析NTP時間戳
-        return ((buffer[40] & 0xFFL) << 24) | 
-               ((buffer[41] & 0xFFL) << 16) | 
-               ((buffer[42] & 0xFFL) << 8) | 
-               (buffer[43] & 0xFFL);
+
+        long secondsSince1900 = ((buffer[40] & 0xFFL) << 24) |
+                                ((buffer[41] & 0xFFL) << 16) |
+                                ((buffer[42] & 0xFFL) << 8) |
+                                (buffer[43] & 0xFFL);
+
+        // 轉成從 1970 開始的毫秒時間戳
+        long secondsSince1970 = secondsSince1900 - NTP_TO_UNIX_EPOCH_OFFSET;
+        return secondsSince1970 * 1000L;
     }
 
 
     // 狀態標記
     private boolean tenMinWarningSent = false; // 是否已發送10分鐘警告
     private boolean threeMinWarningSent = false; // 是否已發送3分鐘警告
-    private boolean timemeout = false; // 時間是否已用盡
+    private boolean timeout = false; // 時間是否已用盡
     
     private final NotificationListener listener; // 通知監聽器
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss"); // 時間格式化工具
@@ -71,7 +83,13 @@ public class Timecounter {
 
     // 獲取當前現實時間
     public String getCurrentRealTime() {
-        return timeFormat.format(new Date());
+        try {
+            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .format(getNetworkTaipeiTime());
+        } catch (Exception e) {
+            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .format(ZonedDateTime.now(ZoneId.of("Asia/Taipei")));
+        }
     }
     
     // 通知監聽器介面
@@ -114,15 +132,26 @@ public class Timecounter {
 
     // 儲存狀態
     private void saveState() {
+        long now = System.currentTimeMillis();
+        if (now - lastSaveTime < 10 * 1000) return;
+
+        lastSaveTime = now; // 更新上次儲存時間
         JSONObject obj = new JSONObject(); // 建立JSON物件
         obj.put("date", LocalDate.now().toString()); // 儲存當前日期
         obj.put("remainingTime", remainingTime); // 儲存剩餘時間
         obj.put("totalPlayed", getTotalPlayedTime()); // 儲存已使用時間
         
-        try (FileWriter writer = new FileWriter(STATE_FILE)) { // 嘗試寫入檔案
-            writer.write(obj.toString()); // 將JSON轉為字串寫入
+        try {
+            // 寫入暫存檔，然後改名取代原檔，降低損壞風險
+            File tempFile = new File(STATE_FILE + ".tmp");
+            try (FileWriter writer = new FileWriter(tempFile)) {
+                writer.write(obj.toString());
+            }
+
+            // 取代原本檔案
+            File actualFile = new File(STATE_FILE);
         } catch (IOException e) {
-            e.printStackTrace(); // 例外處理
+            e.printStackTrace();
         }
     }
 
@@ -156,6 +185,15 @@ public class Timecounter {
     // 檢查時間
     private void checkTime() {
         String currentTime = getCurrentTime(); // 取得當前時間字串
+        LocalDate today = LocalDate.now();
+
+        if (!today.equals(lastCheckedDate)) {
+            System.out.println("[跨日偵測] 新的一天開始，重置使用時間。");
+            lastCheckedDate = today;
+            reset();          // 重置剩餘時間與狀態
+            start();          // 重新啟動計時器
+            return;           // 當前不繼續執行後續檢查
+        }
         
         if (isForbiddenTime()) { // 如果是禁止時段
             handleForbiddenTime(currentTime); // 處理禁止時段邏輯
@@ -170,8 +208,8 @@ public class Timecounter {
             
             checkWarnings(currentTime); // 檢查是否需要發送警告
             
-            if (remainingTime == 0 && !timemeout) { // 如果時間用盡且尚未通知
-                timemeout = true; // 標記時間已用盡
+            if (remainingTime == 0 && !timeout) { // 如果時間用盡且尚未通知
+                timeout = true; // 標記時間已用盡
                 listener.onTimeExhausted(currentTime); // 觸發時間用盡通知
                 timer.cancel(); // 停止計時器
             }
@@ -219,8 +257,8 @@ public class Timecounter {
             listener.onThreeMinuteWarning(currentTime); // 觸發3分鐘警告
         }
 	    // 時間用完檢查
-        if (remainingTime <= 0 && !timemeout) {
-            timemeout = true;
+        if (remainingTime == 0 && !timeout) {
+            timeout = true;
             timer.cancel();
             if (listener != null) {
                 listener.onTimeExhausted(currentTime);
@@ -267,6 +305,7 @@ public class Timecounter {
         remainingTime = dailyLimit; // 重置剩餘時間
         resetFlags(); // 重置警告標記
         deleteStateFile(); // 刪除狀態檔案
+        lastCheckedDate = LocalDate.now(); // 補上更新日期
     }
 
     // 取得總共已使用時間
@@ -295,6 +334,6 @@ public class Timecounter {
     private void resetFlags() {
         tenMinWarningSent = false; // 重置10分鐘警告標記
         threeMinWarningSent = false; // 重置3分鐘警告標記
-        timemeout = false; // 重置時間用盡標記
+        timeout = false; // 重置時間用盡標記
     }
 }
