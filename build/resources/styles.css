@@ -1,0 +1,37 @@
+@font-face {
+    font-family: "Noto Sans TC";
+    src: url("fonts/static/NotoSansTC-Regular.ttf");
+}
+
+.root {
+    -fx-font-family: "Noto Sans TC";
+    -fx-font-size: 14px;
+    -fx-background-color: #f9f9f9;
+}
+
+.label {
+    -fx-text-fill: #333333;
+}
+
+.button {
+    -fx-font-size: 14px;
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+}
+
+.button:hover {
+    -fx-background-color: #45A049;
+}
+
+.text-field, .password-field {
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 4;
+    -fx-padding: 6px;
+}
+
+.error-label {
+    -fx-text-fill: red;
+    -fx-font-weight: bold;
+}

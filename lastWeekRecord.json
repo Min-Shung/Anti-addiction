@@ -1,0 +1,13 @@
+{
+    "totalUsedMinutes": 450,
+    "averageUsedMinutes": 64.29,
+    "dailyUsage": [
+        { "day": "MONDAY",    "usedMinutes": 60 },
+        { "day": "TUESDAY",   "usedMinutes": 70 },
+        { "day": "WEDNESDAY", "usedMinutes": 65 },
+        { "day": "THURSDAY",  "usedMinutes": 55 },
+        { "day": "FRIDAY",    "usedMinutes": 75 },
+        { "day": "SATURDAY",  "usedMinutes": 65 },
+        { "day": "SUNDAY",    "usedMinutes": 60 }
+    ]
+}

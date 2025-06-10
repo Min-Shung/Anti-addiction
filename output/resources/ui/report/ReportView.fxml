@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="ui.report.ReportView" style="-fx-padding: 20;">
+    <top>
+        <Label text="上週使用報告" style="-fx-font-size: 18px; -fx-font-weight: bold;" BorderPane.alignment="CENTER"/>
+    </top>
+    <center>
+        <VBox spacing="10" fx:id="reportContent" style="-fx-padding: 10;">
+            <!-- 報告內容將動態加入 -->
+        </VBox>
+    </center>
+    <bottom>
+        <Button text="關閉" onAction="#handleClose" alignment="CENTER" style="-fx-padding: 6 20;"/>
+    </bottom>
+</BorderPane>

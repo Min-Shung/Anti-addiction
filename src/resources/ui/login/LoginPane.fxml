@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="ui.login.LoginPane" style="-fx-padding: 8;">
+    <VBox spacing="4" maxWidth="200">
+        <Label fx:id="titleLabel" text="請輸入密碼" style="-fx-font-size: 12px;" />
+        <PasswordField fx:id="passwordField" promptText="密碼"/>
+        <Button text="登入" onAction="#handleConfirm" maxWidth="Infinity"/>
+        <Label fx:id="errorLabel" textFill="red"/>
+    </VBox>
+</StackPane>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.media.MediaView?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="ui.home.HomeView">
+
+    <left>
+        <VBox spacing="4" prefWidth="260" style="-fx-padding: 8 13 8 13;">
+            <VBox fx:id="infoBox" spacing="3" style="-fx-padding: 3;">
+                <!-- 顯示可遊玩時間、是否夜間禁玩 -->
+            </VBox>
+            <Button text="查看使用報告" onAction="#showReport"  prefHeight="20" />
+            <StackPane fx:id="logContainer" prefHeight="180" prefWidth="220" style="-fx-background-color: #e0e0e0; -fx-padding: 5;" >
+                <MediaView fx:id="videoPlayer" fitWidth="80" />
+                <Label fx:id="logArea" prefHeight="120" prefWidth="220" wrapText="true" alignment="center"/>
+                <Label fx:id="idleLabel" text=""  StackPane.alignment="BOTTOM_CENTER" />
+            </StackPane>
+        </VBox>
+    </left>
+
+    <right>
+        <StackPane fx:id="rightPane"  style="-fx-padding: 8 13 8 13;"/>
+    </right>
+
+</BorderPane>

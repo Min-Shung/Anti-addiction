@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="ui.settings.SettingsPane" style="-fx-padding: 8;">
+    <VBox spacing="4" maxWidth="220">
+        <Label text="每日時間 (分鐘)" />
+        <TextField fx:id="dailyMinutesField" promptText="例如：90"  prefWidth="100" prefHeight="30"/>
+        <CheckBox fx:id="restrictCheckBox" text="夜間限制" />
+        <Label text="啟用夜間限制（23:00–07:00）" style="-fx-text-fill: #A0A0A0; -fx-font-size: 11px;" />
+        <Button text="儲存" onAction="#handleSave"  prefWidth="80" prefHeight="30"/>
+        <Label fx:id="statusLabel" textFill="green"/>
+    </VBox>
+</StackPane>
